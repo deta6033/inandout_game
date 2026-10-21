@@ -76,12 +76,22 @@ void AInAndOutHUD::DrawHUD()
 
     for (TActorIterator<AMomCharacter> It(GetWorld()); It; ++It)
     {
-        Mom = *It;
-        break;
+        if (!It->IsDead()) { Mom = *It; break; }
     }
 
     if (Son)
     {
+        // Color-coded active weapon, readable without a new UMG asset.
+        const bool bPillow = Son->GetEquippedWeapon() == EInAndOutWeaponSlot::Pillow;
+        const float SlotY = ScreenHeight - 155.0f;
+        DrawRect(bPillow ? FLinearColor(0.16f, 0.4f, 0.58f, 0.95f) : FLinearColor(0.09f, 0.1f, 0.14f, 0.85f),
+            ScreenWidth - 238.0f, SlotY, 103.0f, 36.0f);
+        DrawRect(!bPillow ? FLinearColor(0.60f, 0.30f, 0.1f, 0.95f) : FLinearColor(0.09f, 0.1f, 0.14f, 0.85f),
+            ScreenWidth - 126.0f, SlotY, 103.0f, 36.0f);
+        DrawText(TEXT("1 베개"), FLinearColor::White, ScreenWidth - 228.0f, SlotY + 8.0f, Font, 0.95f, false);
+        DrawText(TEXT("2 폼다트"), FLinearColor::White, ScreenWidth - 120.0f, SlotY + 8.0f, Font, 0.85f, false);
+        DrawText(TEXT("휠: 무기 변경"), FLinearColor::White, ScreenWidth - 238.0f, SlotY + 40.0f, Font, 0.78f, false);
+
         const UHealthComponent* SonHealth = Son->GetHealthComponent();
         const UUltimateChargeComponent* SonUltimate = Son->GetUltimateComponent();
 
