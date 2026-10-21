@@ -14,6 +14,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -81,6 +82,8 @@ void ASonCharacter::BeginPlay()
 
     GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
     CurrentMagazineAmmo = MagazineSize;
+    ApplyWeaponColors();
+    UpdateWeaponPresentation();
 
     HealthComponent->ConfigureHealth(StartingMaxHealth, true);
     UltimateComponent->Configure(UltimateMaxCharge, UltimateChargePerDamage, true);
@@ -112,8 +115,10 @@ void ASonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
     PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ASonCharacter::StartJump);
     PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ASonCharacter::StopJumpAction);
-    PlayerInputComponent->BindAction(TEXT("MeleeAttack"), IE_Pressed, this, &ASonCharacter::TryMeleeAttack);
-    PlayerInputComponent->BindAction(TEXT("FireDart"), IE_Pressed, this, &ASonCharacter::TryFireFoamDart);
+    PlayerInputComponent->BindAction(TEXT("PrimaryAttack"), IE_Pressed, this, &ASonCharacter::TryPrimaryAttack);
+    PlayerInputComponent->BindAction(TEXT("Weapon1"), IE_Pressed, this, &ASonCharacter::SelectPillow);
+    PlayerInputComponent->BindAction(TEXT("Weapon2"), IE_Pressed, this, &ASonCharacter::SelectFoamDart);
+    PlayerInputComponent->BindAction(TEXT("NextWeapon"), IE_Pressed, this, &ASonCharacter::CycleWeapon);
     PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &ASonCharacter::StartReload);
     PlayerInputComponent->BindAction(TEXT("UseUltimate"), IE_Pressed, this, &ASonCharacter::TryUseReportCardUltimate);
     PlayerInputComponent->BindAction(TEXT("Interact"), IE_Pressed, this, &ASonCharacter::TryInteract);
@@ -181,9 +186,83 @@ void ASonCharacter::GetViewPoint(FVector& OutLocation, FRotator& OutRotation) co
     }
 }
 
+void ASonCharacter::TryPrimaryAttack()
+{
+    if (EquippedWeapon == EInAndOutWeaponSlot::Pillow)
+    {
+        TryMeleeAttack();
+    }
+    else
+    {
+        TryFireFoamDart();
+    }
+}
+
+void ASonCharacter::SelectPillow()
+{
+    EquipWeapon(EInAndOutWeaponSlot::Pillow);
+}
+
+void ASonCharacter::SelectFoamDart()
+{
+    EquipWeapon(EInAndOutWeaponSlot::FoamDart);
+}
+
+void ASonCharacter::CycleWeapon()
+{
+    EquipWeapon(EquippedWeapon == EInAndOutWeaponSlot::Pillow
+        ? EInAndOutWeaponSlot::FoamDart : EInAndOutWeaponSlot::Pillow);
+}
+
+void ASonCharacter::EquipWeapon(EInAndOutWeaponSlot NewWeapon)
+{
+    if (!CanUseCombatActions() || EquippedWeapon == NewWeapon)
+    {
+        return;
+    }
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (Now - LastWeaponSwitchTime < WeaponSwitchCooldown)
+    {
+        return;
+    }
+
+    EquippedWeapon = NewWeapon;
+    LastWeaponSwitchTime = Now;
+    UpdateWeaponPresentation();
+    BP_OnWeaponEquipped(EquippedWeapon);
+}
+
+void ASonCharacter::UpdateWeaponPresentation()
+{
+    PillowMesh->SetVisibility(EquippedWeapon == EInAndOutWeaponSlot::Pillow);
+    FoamDartGunMesh->SetVisibility(EquippedWeapon == EInAndOutWeaponSlot::FoamDart);
+}
+
+void ASonCharacter::ApplyWeaponColors()
+{
+    // If the current material has no TintColor parameter, configure a compatible
+    // Material Instance in BP_Son; changing this value alone cannot recolor it.
+    auto TintMesh = [this](UStaticMeshComponent* Mesh, const FLinearColor& Tint)
+    {
+        if (!Mesh)
+        {
+            return;
+        }
+        for (int32 Index = 0; Index < Mesh->GetNumMaterials(); ++Index)
+        {
+            if (UMaterialInstanceDynamic* MID = Mesh->CreateDynamicMaterialInstance(Index))
+            {
+                MID->SetVectorParameterValue(WeaponTintParameterName, Tint);
+            }
+        }
+    };
+    TintMesh(PillowMesh, PillowTint);
+    TintMesh(FoamDartGunMesh, FoamDartTint);
+}
+
 void ASonCharacter::TryMeleeAttack()
 {
-    if (!CanUseCombatActions() || bReloading)
+    if (!CanUseCombatActions() || EquippedWeapon != EInAndOutWeaponSlot::Pillow)
     {
         return;
     }
@@ -243,7 +322,7 @@ void ASonCharacter::TryMeleeAttack()
 
 void ASonCharacter::TryFireFoamDart()
 {
-    if (!CanUseCombatActions() || bReloading)
+    if (!CanUseCombatActions() || bReloading || EquippedWeapon != EInAndOutWeaponSlot::FoamDart)
     {
         return;
     }
@@ -297,7 +376,7 @@ void ASonCharacter::TryFireFoamDart()
 
 void ASonCharacter::StartReload()
 {
-    if (!CanUseCombatActions() || bReloading || CurrentMagazineAmmo >= MagazineSize)
+    if (!CanUseCombatActions() || bReloading || EquippedWeapon != EInAndOutWeaponSlot::FoamDart || CurrentMagazineAmmo >= MagazineSize)
     {
         return;
     }
@@ -378,7 +457,7 @@ AMomCharacter* ASonCharacter::FindReportCardTarget() const
 
 void ASonCharacter::TryUseReportCardUltimate()
 {
-    if (!CanUseCombatActions() || bReloading || !UltimateComponent->IsReady())
+    if (!CanUseCombatActions() || !UltimateComponent->IsReady())
     {
         return;
     }
@@ -389,12 +468,12 @@ void ASonCharacter::TryUseReportCardUltimate()
         return;
     }
 
-    TargetMom->ApplyStun(ReportCardStunDuration);
-
     if (!UltimateComponent->ConsumeFullCharge())
     {
         return;
     }
+
+    TargetMom->ApplyStun(ReportCardStunDuration);
 
     ReportCardMesh->SetVisibility(true);
     BP_OnReportCardUltimate();
