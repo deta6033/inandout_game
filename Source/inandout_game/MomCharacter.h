@@ -96,6 +96,12 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
     TObjectPtr<UUltimateChargeComponent> UltimateComponent;
 
+    UPROPERTY(EditAnywhere, Category="Visual|Boss", meta=(DisplayName="색상 파라미터"))
+    FName BossTintParameterName = TEXT("TintColor");
+
+    UPROPERTY(EditAnywhere, Category="Visual|Boss", meta=(DisplayName="보스 기본 색상"))
+    FLinearColor BossTint = FLinearColor(0.95f, 0.30f, 0.45f, 1.0f);
+
     UPROPERTY(EditAnywhere, Category="Stats|Health", meta=(ClampMin="1.0"))
     float StartingMaxHealth = 300.0f;
 
