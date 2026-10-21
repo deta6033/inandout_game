@@ -234,7 +234,8 @@ void ASonCharacter::EquipWeapon(EInAndOutWeaponSlot NewWeapon)
 
 void ASonCharacter::UpdateWeaponPresentation()
 {
-    PillowMesh->SetVisibility(EquippedWeapon == EInAndOutWeaponSlot::Pillow);
+    // The pillow is drawn only by the BP_PillowSwing animation when attacking.
+    PillowMesh->SetVisibility(false);
     FoamDartGunMesh->SetVisibility(EquippedWeapon == EInAndOutWeaponSlot::FoamDart);
 }
 
