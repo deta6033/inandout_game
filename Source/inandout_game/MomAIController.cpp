@@ -69,6 +69,12 @@ void AMomAIController::MakeDecision()
         return;
     }
 
+    if (MomCharacter->IsAttackLocked())
+    {
+        StopMovement();
+        return;
+    }
+
     if (MomCharacter->IsStunned())
     {
         StopMovement();
@@ -184,7 +190,7 @@ void AMomAIController::UpdateChase(ACharacter* Son)
         && Distance <= MomCharacter->GetUltimateRange())
     {
         StopMovement();
-        if (MomCharacter->TryNaggingUltimate(Son))
+        if (MomCharacter->BeginTelegraphedAttack(Son, 2))
         {
             return;
         }
@@ -193,14 +199,14 @@ void AMomAIController::UpdateChase(ACharacter* Son)
     if (Distance <= MomCharacter->GetMeleeRange())
     {
         StopMovement();
-        MomCharacter->TryMeleeAttack(Son);
+        MomCharacter->BeginTelegraphedAttack(Son, 0);
         return;
     }
 
     if (Distance <= MomCharacter->GetRangedRange())
     {
         StopMovement();
-        if (MomCharacter->TryEggAttack(Son))
+        if (MomCharacter->BeginTelegraphedAttack(Son, 1))
         {
             return;
         }
