@@ -8,6 +8,8 @@
 #include "UltimateChargeComponent.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/Controller.h"
@@ -37,6 +39,18 @@ AMomCharacter::AMomCharacter()
 void AMomCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    // Requires a vector parameter (default: TintColor) in the boss materials.
+    if (USkeletalMeshComponent* MeshComponent = GetMesh())
+    {
+        for (int32 Index = 0; Index < MeshComponent->GetNumMaterials(); ++Index)
+        {
+            if (UMaterialInstanceDynamic* MID = MeshComponent->CreateDynamicMaterialInstance(Index))
+            {
+                MID->SetVectorParameterValue(BossTintParameterName, BossTint);
+            }
+        }
+    }
 
     GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
     HealthComponent->ConfigureHealth(StartingMaxHealth, true);
