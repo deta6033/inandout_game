@@ -242,15 +242,15 @@ void ASonCharacter::ApplyWeaponColors()
 {
     // If the current material has no TintColor parameter, configure a compatible
     // Material Instance in BP_Son; changing this value alone cannot recolor it.
-    auto TintMesh = [this](UStaticMeshComponent* Mesh, const FLinearColor& Tint)
+    auto TintMesh = [this](UStaticMeshComponent* WeaponMeshComponent, const FLinearColor& Tint)
     {
-        if (!Mesh)
+        if (!WeaponMeshComponent)
         {
             return;
         }
-        for (int32 Index = 0; Index < Mesh->GetNumMaterials(); ++Index)
+        for (int32 Index = 0; Index < WeaponMeshComponent->GetNumMaterials(); ++Index)
         {
-            if (UMaterialInstanceDynamic* MID = Mesh->CreateDynamicMaterialInstance(Index))
+            if (UMaterialInstanceDynamic* MID = WeaponMeshComponent->CreateDynamicMaterialInstance(Index))
             {
                 MID->SetVectorParameterValue(WeaponTintParameterName, Tint);
             }
