@@ -276,6 +276,10 @@ void ASonCharacter::TryMeleeAttack()
     LastMeleeTime = Now;
     BP_OnPillowMelee();
 
+    // An existing Blueprint melee event may restore legacy weapon visibility.
+    // Keep presentation consistent with the authoritative C++ equipped slot.
+    UpdateWeaponPresentation();
+
     FVector ViewLocation;
     FRotator ViewRotation;
     GetViewPoint(ViewLocation, ViewRotation);
