@@ -56,6 +56,50 @@ bool AMomCharacter::IsUltimateReady() const
     return UltimateComponent && UltimateComponent->IsReady();
 }
 
+bool AMomCharacter::BeginTelegraphedAttack(AActor* Target, int32 AttackIndex)
+{
+    if (!CanAct() || bAttackLocked || !IsValid(Target) || AttackIndex < 0 || AttackIndex > 2) return false;
+    if (AttackIndex == 2 && !IsUltimateReady()) return false;
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (AttackIndex == 0 && Now - LastMeleeTime < MeleeCooldown) return false;
+    if (AttackIndex == 1 && Now - LastRangedTime < RangedCooldown) return false;
+
+    bAttackLocked = true;
+    QueuedAttack = AttackIndex;
+    QueuedTarget = Target;
+    const float Delay = AttackIndex == 0 ? MeleeTelegraphTime :
+                        AttackIndex == 1 ? EggTelegraphTime : UltimateTelegraphTime;
+    if (AController* AI = GetController()) AI->StopMovement();
+    GetCharacterMovement()->StopMovementImmediately();
+    BP_OnAttackWarning(AttackIndex, Delay);
+    GetWorldTimerManager().SetTimer(AttackWindupTimerHandle, this,
+        &AMomCharacter::ResolveQueuedAttack, Delay, false);
+    return true;
+}
+
+void AMomCharacter::ResolveQueuedAttack()
+{
+    const int32 Attack = QueuedAttack;
+    AActor* Target = QueuedTarget.Get();
+    QueuedAttack = -1;
+    QueuedTarget.Reset();
+    if (CanAct() && IsValid(Target))
+    {
+        if (Attack == 0) TryMeleeAttack(Target);
+        else if (Attack == 1) TryEggAttack(Target);
+        else if (Attack == 2) TryNaggingUltimate(Target);
+    }
+    BP_OnAttackRecovery(Attack, AttackRecoveryTime);
+    if (AttackRecoveryTime <= KINDA_SMALL_NUMBER) FinishAttackRecovery();
+    else GetWorldTimerManager().SetTimer(AttackRecoveryTimerHandle, this,
+        &AMomCharacter::FinishAttackRecovery, AttackRecoveryTime, false);
+}
+
+void AMomCharacter::FinishAttackRecovery()
+{
+    bAttackLocked = false;
+}
+
 bool AMomCharacter::TryMeleeAttack(AActor* Target)
 {
     if (!CanAct() || !Target)
@@ -151,12 +195,12 @@ bool AMomCharacter::TryNaggingUltimate(AActor* Target)
         return false;
     }
 
-    Son->ApplyNaggingSlow(NaggingSlowMultiplier, NaggingDuration);
-
     if (!UltimateComponent->ConsumeFullCharge())
     {
         return false;
     }
+
+    Son->ApplyNaggingSlow(NaggingSlowMultiplier, NaggingDuration);
 
     BP_OnNaggingUltimateStarted(NaggingDuration);
 
@@ -247,6 +291,11 @@ void AMomCharacter::ApplyStun(float Duration)
     }
 
     bStunned = true;
+    bAttackLocked = false;
+    QueuedAttack = -1;
+    QueuedTarget.Reset();
+    GetWorldTimerManager().ClearTimer(AttackWindupTimerHandle);
+    GetWorldTimerManager().ClearTimer(AttackRecoveryTimerHandle);
 
     if (AController* MomController = GetController())
     {
@@ -290,6 +339,10 @@ void AMomCharacter::HandleDeath(AActor* DamageCauser)
 
     bDead = true;
     bStunned = false;
+    bAttackLocked = false;
+    QueuedTarget.Reset();
+    GetWorldTimerManager().ClearTimer(AttackWindupTimerHandle);
+    GetWorldTimerManager().ClearTimer(AttackRecoveryTimerHandle);
 
     GetWorldTimerManager().ClearTimer(StunTimerHandle);
     GetWorldTimerManager().ClearTimer(NaggingSpawnTimerHandle);
