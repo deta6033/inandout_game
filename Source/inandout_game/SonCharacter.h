@@ -14,6 +14,14 @@ class UUltimateChargeComponent;
 class AFoamDartProjectile;
 class AMomCharacter;
 
+// Two ordinary weapons; the report card remains a separate ultimate ability.
+UENUM(BlueprintType)
+enum class EInAndOutWeaponSlot : uint8
+{
+    Pillow UMETA(DisplayName="베개"),
+    FoamDart UMETA(DisplayName="폼다트 총")
+};
+
 UCLASS()
 class INANDOUT_GAME_API ASonCharacter : public ACharacter
 {
@@ -30,6 +38,12 @@ public:
 
     UFUNCTION(BlueprintPure, Category="Ultimate")
     UUltimateChargeComponent* GetUltimateComponent() const { return UltimateComponent; }
+
+    UFUNCTION(BlueprintPure, Category="Combat|Weapon")
+    EInAndOutWeaponSlot GetEquippedWeapon() const { return EquippedWeapon; }
+
+    UFUNCTION(BlueprintCallable, Category="Combat|Weapon")
+    void EquipWeapon(EInAndOutWeaponSlot NewWeapon);
 
     UFUNCTION(BlueprintPure, Category="Combat|Ammo")
     int32 GetCurrentMagazineAmmo() const { return CurrentMagazineAmmo; }
@@ -54,6 +68,10 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+
+    // Blueprint can play draw/holster animation and update weapon audio.
+    UFUNCTION(BlueprintImplementableEvent, Category="Presentation", meta=(DisplayName="On Weapon Equipped"))
+    void BP_OnWeaponEquipped(EInAndOutWeaponSlot Weapon);
 
     UFUNCTION(BlueprintImplementableEvent, Category="Presentation", meta=(DisplayName="On Pillow Melee"))
     void BP_OnPillowMelee();
@@ -155,6 +173,23 @@ private:
     UPROPERTY(EditAnywhere, Category="Debug")
     bool bDrawAttackDebug = false;
 
+    // TintColor requires a matching Vector Parameter in the material to be visible.
+    UPROPERTY(EditAnywhere, Category="Visual|Weapons", meta=(DisplayName="무기 색상 파라미터"))
+    FName WeaponTintParameterName = TEXT("TintColor");
+
+    UPROPERTY(EditAnywhere, Category="Visual|Weapons", meta=(DisplayName="베개 색상"))
+    FLinearColor PillowTint = FLinearColor(0.4f, 0.85f, 1.0f, 1.0f);
+
+    UPROPERTY(EditAnywhere, Category="Visual|Weapons", meta=(DisplayName="폼다트 총 색상"))
+    FLinearColor FoamDartTint = FLinearColor(1.0f, 0.62f, 0.23f, 1.0f);
+
+    UPROPERTY(EditAnywhere, Category="Combat|Weapon", meta=(ClampMin="0.0", DisplayName="무기 변경 최소 간격"))
+    float WeaponSwitchCooldown = 0.18f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat|Weapon", meta=(AllowPrivateAccess="true", DisplayName="현재 무기"))
+    EInAndOutWeaponSlot EquippedWeapon = EInAndOutWeaponSlot::FoamDart;
+
+    float LastWeaponSwitchTime = -1000.0f;
     int32 CurrentMagazineAmmo = 8;
     bool bReloading = false;
     bool bDead = false;
@@ -177,6 +212,12 @@ private:
 
     void StartJump();
     void StopJumpAction();
+    void TryPrimaryAttack();
+    void SelectPillow();
+    void SelectFoamDart();
+    void CycleWeapon();
+    void UpdateWeaponPresentation();
+    void ApplyWeaponColors();
     void TryMeleeAttack();
     void TryFireFoamDart();
     void StartReload();
