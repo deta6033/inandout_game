@@ -43,6 +43,12 @@ public:
     UFUNCTION(BlueprintPure, Category="Combat")
     bool IsUltimateReady() const;
 
+    UFUNCTION(BlueprintPure, Category="AI|Combat")
+    bool IsAttackLocked() const { return bAttackLocked; }
+
+    UFUNCTION(BlueprintCallable, Category="AI|Combat")
+    bool BeginTelegraphedAttack(AActor* Target, int32 AttackIndex);
+
     bool TryMeleeAttack(AActor* Target);
     bool TryEggAttack(AActor* Target);
     bool TryNaggingUltimate(AActor* Target);
@@ -52,6 +58,12 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+
+    UFUNCTION(BlueprintImplementableEvent, Category="Presentation", meta=(DisplayName="On Boss Attack Warning"))
+    void BP_OnAttackWarning(int32 AttackIndex, float WarningDuration);
+
+    UFUNCTION(BlueprintImplementableEvent, Category="Presentation", meta=(DisplayName="On Boss Attack Recovery"))
+    void BP_OnAttackRecovery(int32 AttackIndex, float RecoveryDuration);
 
     UFUNCTION(BlueprintImplementableEvent, Category="Presentation", meta=(DisplayName="On Rubber Glove Melee"))
     void BP_OnRubberGloveMelee();
@@ -128,6 +140,27 @@ private:
 
     UPROPERTY(EditAnywhere, Category="Combat|Ultimate", meta=(ClampMin="0.05"))
     float NaggingTextSpawnInterval = 0.28f;
+
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="근접 공격 예고 시간", ClampMin="0.05"))
+    float MeleeTelegraphTime = 0.42f;
+
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="달걀 공격 예고 시간", ClampMin="0.05"))
+    float EggTelegraphTime = 0.65f;
+
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="궁극기 예고 시간", ClampMin="0.05"))
+    float UltimateTelegraphTime = 0.9f;
+
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="공격 회복 시간", ClampMin="0.0"))
+    float AttackRecoveryTime = 0.5f;
+
+    bool bAttackLocked = false;
+    int32 QueuedAttack = -1;
+    TWeakObjectPtr<AActor> QueuedTarget;
+    FTimerHandle AttackWindupTimerHandle;
+    FTimerHandle AttackRecoveryTimerHandle;
+
+    void ResolveQueuedAttack();
+    void FinishAttackRecovery();
 
     float LastMeleeTime = -1000.0f;
     float LastRangedTime = -1000.0f;
