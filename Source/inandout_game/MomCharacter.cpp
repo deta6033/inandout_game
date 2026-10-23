@@ -83,8 +83,10 @@ bool AMomCharacter::BeginTelegraphedAttack(AActor* Target, int32 AttackIndex)
     QueuedTarget = Target;
     const float Delay = AttackIndex == 0 ? MeleeTelegraphTime :
                         AttackIndex == 1 ? EggTelegraphTime : UltimateTelegraphTime;
-    if (AController* AI = GetController()) AI->StopMovement();
-    GetCharacterMovement()->StopMovementImmediately();
+    // Allow controller-driven movement during the attack warning.
+    const float Ratio = AttackIndex == 0 ? MeleeWindupSpeedRatio :
+                        AttackIndex == 1 ? EggWindupSpeedRatio : UltimateWindupSpeedRatio;
+    GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * Ratio;
     BP_OnAttackWarning(AttackIndex, Delay);
     GetWorldTimerManager().SetTimer(AttackWindupTimerHandle, this,
         &AMomCharacter::ResolveQueuedAttack, Delay, false);
@@ -103,6 +105,7 @@ void AMomCharacter::ResolveQueuedAttack()
         else if (Attack == 1) TryEggAttack(Target);
         else if (Attack == 2) TryNaggingUltimate(Target);
     }
+    GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * RecoverySpeedRatio;
     BP_OnAttackRecovery(Attack, AttackRecoveryTime);
     if (AttackRecoveryTime <= KINDA_SMALL_NUMBER) FinishAttackRecovery();
     else GetWorldTimerManager().SetTimer(AttackRecoveryTimerHandle, this,
@@ -112,6 +115,7 @@ void AMomCharacter::ResolveQueuedAttack()
 void AMomCharacter::FinishAttackRecovery()
 {
     bAttackLocked = false;
+    GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 }
 
 bool AMomCharacter::TryMeleeAttack(AActor* Target)
@@ -310,6 +314,8 @@ void AMomCharacter::ApplyStun(float Duration)
     QueuedTarget.Reset();
     GetWorldTimerManager().ClearTimer(AttackWindupTimerHandle);
     GetWorldTimerManager().ClearTimer(AttackRecoveryTimerHandle);
+    GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+    BP_OnAttackRecovery(-1, 0.0f); // Restore tint when warning is cancelled by stun.
 
     if (AController* MomController = GetController())
     {
