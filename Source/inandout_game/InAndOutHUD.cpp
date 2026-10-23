@@ -79,52 +79,83 @@ void AInAndOutHUD::DrawHUD()
         if (!It->IsDead()) { Mom = *It; break; }
     }
 
+    // Responsive gameplay HUD: compact, readable panels without new UMG assets.
+    const float Scale = FMath::Clamp(FMath::Min(ScreenWidth / 1920.0f, ScreenHeight / 1080.0f), 0.70f, 1.25f);
+    const float Margin = 28.0f * Scale;
+    const float PanelWidth = 360.0f * Scale;
+    const float PanelHeight = 137.0f * Scale;
+    const float Bottom = ScreenHeight - Margin;
+    const FLinearColor Panel(0.018f, 0.027f, 0.045f, 0.82f);
+    const FLinearColor Muted(0.67f, 0.76f, 0.86f, 1.0f);
+    const FLinearColor Accent(0.20f, 0.82f, 0.96f, 1.0f);
+
     if (Son)
     {
-        // Color-coded active weapon, readable without a new UMG asset.
-        const bool bPillow = Son->GetEquippedWeapon() == EInAndOutWeaponSlot::Pillow;
-        const float SlotY = ScreenHeight - 155.0f;
-        DrawRect(bPillow ? FLinearColor(0.16f, 0.4f, 0.58f, 0.95f) : FLinearColor(0.09f, 0.1f, 0.14f, 0.85f),
-            ScreenWidth - 238.0f, SlotY, 103.0f, 36.0f);
-        DrawRect(!bPillow ? FLinearColor(0.60f, 0.30f, 0.1f, 0.95f) : FLinearColor(0.09f, 0.1f, 0.14f, 0.85f),
-            ScreenWidth - 126.0f, SlotY, 103.0f, 36.0f);
-        DrawText(TEXT("1 베개"), FLinearColor::White, ScreenWidth - 228.0f, SlotY + 8.0f, Font, 0.95f, false);
-        DrawText(TEXT("2 폼다트"), FLinearColor::White, ScreenWidth - 120.0f, SlotY + 8.0f, Font, 0.85f, false);
-        DrawText(TEXT("휠: 무기 변경"), FLinearColor::White, ScreenWidth - 238.0f, SlotY + 40.0f, Font, 0.78f, false);
-
         const UHealthComponent* SonHealth = Son->GetHealthComponent();
         const UUltimateChargeComponent* SonUltimate = Son->GetUltimateComponent();
+        const bool bPillow = Son->GetEquippedWeapon() == EInAndOutWeaponSlot::Pillow;
+        const float LeftX = Margin;
+        const float LeftY = Bottom - PanelHeight;
 
-        DrawText(TEXT("아들 HP"), FLinearColor::White, 35.0f, ScreenHeight - 120.0f, Font, 1.0f, false);
-        DrawBar(35.0f, ScreenHeight - 95.0f, 280.0f, 22.0f, SonHealth->GetHealthNormalized(), FLinearColor(0.12f, 0.65f, 1.0f, 1.0f));
+        DrawRect(Panel, LeftX, LeftY, PanelWidth, PanelHeight);
+        DrawRect(Accent, LeftX, LeftY, 4.0f * Scale, PanelHeight);
+        DrawText(TEXT("PLAYER"), Accent, LeftX + 17.0f * Scale, LeftY + 10.0f * Scale, Font, 0.95f * Scale, false);
+        DrawText(TEXT("체력"), FLinearColor::White, LeftX + 17.0f * Scale, LeftY + 35.0f * Scale, Font, 0.90f * Scale, false);
+        if (SonHealth)
+        {
+            DrawBar(LeftX + 76.0f * Scale, LeftY + 40.0f * Scale,
+                264.0f * Scale, 17.0f * Scale, SonHealth->GetHealthNormalized(),
+                FLinearColor(0.12f, 0.80f, 0.92f, 1.0f));
+        }
+        DrawText(TEXT("궁극기 [Q]"), Muted, LeftX + 17.0f * Scale, LeftY + 78.0f * Scale, Font, 0.85f * Scale, false);
+        if (SonUltimate)
+        {
+            DrawBar(LeftX + 115.0f * Scale, LeftY + 83.0f * Scale,
+                225.0f * Scale, 12.0f * Scale, SonUltimate->GetChargeNormalized(),
+                FLinearColor(0.76f, 0.43f, 1.0f, 1.0f));
+        }
+        DrawText(TEXT("WASD 이동   |   E 상호작용"), Muted,
+            LeftX + 17.0f * Scale, LeftY + 108.0f * Scale, Font, 0.73f * Scale, false);
 
-        DrawText(TEXT("성적표 궁극기"), FLinearColor::White, 35.0f, ScreenHeight - 62.0f, Font, 0.9f, false);
-        DrawBar(35.0f, ScreenHeight - 40.0f, 280.0f, 16.0f, SonUltimate->GetChargeNormalized(), FLinearColor(0.72f, 0.28f, 1.0f, 1.0f));
+        // Two clear weapon cards replace the narrow floating bars.
+        const float RightX = ScreenWidth - Margin - PanelWidth;
+        const float RightY = Bottom - PanelHeight;
+        DrawRect(Panel, RightX, RightY, PanelWidth, PanelHeight);
+        DrawText(TEXT("WEAPON"), Accent, RightX + 15.0f * Scale,
+            RightY + 10.0f * Scale, Font, 0.95f * Scale, false);
 
-        const FString AmmoText = Son->IsReloading()
-            ? TEXT("재장전 중...")
-            : FString::Printf(TEXT("폼다트 %d / %d  (예비탄 무한)"), Son->GetCurrentMagazineAmmo(), Son->GetMagazineSize());
+        const float CardY = RightY + 37.0f * Scale;
+        const float CardWidth = 160.0f * Scale;
+        const float CardHeight = 48.0f * Scale;
+        const float PillowX = RightX + 15.0f * Scale;
+        const float GunX = RightX + 185.0f * Scale;
+        const FLinearColor Inactive(0.10f, 0.15f, 0.20f, 0.95f);
+        const FLinearColor Active(0.15f, 0.48f, 0.65f, 0.98f);
+        DrawRect(bPillow ? Active : Inactive, PillowX, CardY, CardWidth, CardHeight);
+        DrawRect(!bPillow ? Active : Inactive, GunX, CardY, CardWidth, CardHeight);
+        DrawText(TEXT("[1] 베개"), FLinearColor::White, PillowX + 12.0f * Scale,
+            CardY + 13.0f * Scale, Font, 0.96f * Scale, false);
+        DrawText(TEXT("[2] 폼다트"), FLinearColor::White, GunX + 10.0f * Scale,
+            CardY + 13.0f * Scale, Font, 0.90f * Scale, false);
 
-        DrawText(
-            AmmoText,
-            Son->IsReloading() ? FLinearColor(1.0f, 0.82f, 0.2f, 1.0f) : FLinearColor::White,
-            ScreenWidth - 330.0f,
-            ScreenHeight - 60.0f,
-            Font,
-            1.0f,
-            false);
+        const FString AmmoText = bPillow
+            ? TEXT("근접 공격  |  좌클릭")
+            : Son->IsReloading()
+                ? TEXT("재장전 중...")
+                : FString::Printf(TEXT("탄약 %d / %d  |  [R] 재장전"),
+                    Son->GetCurrentMagazineAmmo(), Son->GetMagazineSize());
+        DrawText(AmmoText, Son->IsReloading() ? FLinearColor(1.0f, 0.80f, 0.30f, 1.0f) : FLinearColor::White,
+            RightX + 15.0f * Scale, RightY + 99.0f * Scale, Font, 0.88f * Scale, false);
 
         const FText Prompt = Son->GetInteractionPrompt();
         if (!Prompt.IsEmpty())
         {
-            DrawText(
-                FString::Printf(TEXT("[E] %s"), *Prompt.ToString()),
-                FLinearColor::White,
-                ScreenWidth * 0.5f - 70.0f,
-                ScreenHeight * 0.62f,
-                Font,
-                1.05f,
-                false);
+            const float PromptX = ScreenWidth * 0.5f - 195.0f * Scale;
+            const float PromptY = ScreenHeight * 0.63f;
+            DrawRect(Panel, PromptX, PromptY, 390.0f * Scale, 42.0f * Scale);
+            DrawText(FString::Printf(TEXT("[E] %s"), *Prompt.ToString()),
+                FLinearColor::White, PromptX + 16.0f * Scale,
+                PromptY + 10.0f * Scale, Font, 0.98f * Scale, false);
         }
     }
 
@@ -132,10 +163,22 @@ void AInAndOutHUD::DrawHUD()
     {
         const UHealthComponent* MomHealth = Mom->GetHealthComponent();
         const UUltimateChargeComponent* MomUltimate = Mom->GetUltimateComponent();
-
-        DrawText(TEXT("엄마"), FLinearColor::White, ScreenWidth * 0.5f - 24.0f, 28.0f, Font, 1.1f, false);
-        DrawBar(ScreenWidth * 0.5f - 250.0f, 52.0f, 500.0f, 24.0f, MomHealth->GetHealthNormalized(), FLinearColor(1.0f, 0.22f, 0.34f, 1.0f));
-        DrawBar(ScreenWidth * 0.5f - 250.0f, 82.0f, 500.0f, 11.0f, MomUltimate->GetChargeNormalized(), FLinearColor(1.0f, 0.70f, 0.1f, 1.0f));
+        const float BossWidth = FMath::Min(560.0f * Scale, ScreenWidth * 0.57f);
+        const float BossX = (ScreenWidth - BossWidth) * 0.5f;
+        const float BossY = 24.0f * Scale;
+        DrawRect(Panel, BossX - 14.0f * Scale, BossY, BossWidth + 28.0f * Scale, 88.0f * Scale);
+        DrawText(TEXT("BOSS  |  엄마"), FLinearColor(1.0f, 0.43f, 0.48f, 1.0f),
+            BossX, BossY + 7.0f * Scale, Font, 1.05f * Scale, false);
+        if (MomHealth)
+        {
+            DrawBar(BossX, BossY + 35.0f * Scale, BossWidth, 19.0f * Scale,
+                MomHealth->GetHealthNormalized(), FLinearColor(0.95f, 0.19f, 0.30f, 1.0f));
+        }
+        if (MomUltimate)
+        {
+            DrawBar(BossX, BossY + 62.0f * Scale, BossWidth, 9.0f * Scale,
+                MomUltimate->GetChargeNormalized(), FLinearColor(1.0f, 0.73f, 0.21f, 1.0f));
+        }
     }
 
     const float CenterX = ScreenWidth * 0.5f;
