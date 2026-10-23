@@ -57,6 +57,11 @@ private:
     float SearchStartTime = 0.0f;
     float NextPatrolMoveTime = 0.0f;
     bool bHasPatrolDestination = false;
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="달걀 선호 거리", ClampMin="100.0"))
+    float EggPreferredDistance = 650.0f;
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="달걀 측면 이동 폭", ClampMin="0.0"))
+    float EggStrafeOffset = 250.0f;
+    bool bStrafeClockwise = true;
 
     FTimerHandle DecisionTimerHandle;
 
@@ -65,6 +70,7 @@ private:
 
     void UpdatePatrol(ACharacter* Son);
     void UpdateChase(ACharacter* Son);
+    void UpdateAttackMovement(ACharacter* Son);
     void UpdateSearch(ACharacter* Son);
 
     void EnterPatrol();
