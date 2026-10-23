@@ -187,7 +187,7 @@ private:
     float WeaponSwitchCooldown = 0.18f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat|Weapon", meta=(AllowPrivateAccess="true", DisplayName="현재 무기"))
-    EInAndOutWeaponSlot EquippedWeapon = EInAndOutWeaponSlot::FoamDart;
+    EInAndOutWeaponSlot EquippedWeapon = EInAndOutWeaponSlot::Pillow;
 
     float LastWeaponSwitchTime = -1000.0f;
     int32 CurrentMagazineAmmo = 8;
