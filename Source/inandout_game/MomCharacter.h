@@ -45,6 +45,7 @@ public:
 
     UFUNCTION(BlueprintPure, Category="AI|Combat")
     bool IsAttackLocked() const { return bAttackLocked; }
+    int32 GetActiveAttackIndex() const { return QueuedAttack; }
 
     UFUNCTION(BlueprintCallable, Category="AI|Combat")
     bool BeginTelegraphedAttack(AActor* Target, int32 AttackIndex);
@@ -148,16 +149,25 @@ private:
     float NaggingTextSpawnInterval = 0.28f;
 
     UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="근접 공격 예고 시간", ClampMin="0.05"))
-    float MeleeTelegraphTime = 0.42f;
+    float MeleeTelegraphTime = 0.35f;
 
     UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="달걀 공격 예고 시간", ClampMin="0.05"))
-    float EggTelegraphTime = 0.65f;
+    float EggTelegraphTime = 0.55f;
 
     UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="궁극기 예고 시간", ClampMin="0.05"))
     float UltimateTelegraphTime = 0.9f;
 
     UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="공격 회복 시간", ClampMin="0.0"))
-    float AttackRecoveryTime = 0.5f;
+    float AttackRecoveryTime = 0.65f;
+
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="근접 준비 속도 비율", ClampMin="0.0", ClampMax="1.0"))
+    float MeleeWindupSpeedRatio = 0.75f;
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="달걀 준비 속도 비율", ClampMin="0.0", ClampMax="1.0"))
+    float EggWindupSpeedRatio = 0.55f;
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="궁극기 준비 속도 비율", ClampMin="0.0", ClampMax="1.0"))
+    float UltimateWindupSpeedRatio = 0.30f;
+    UPROPERTY(EditAnywhere, Category="AI|Combat", meta=(DisplayName="공격 회복 속도 비율", ClampMin="0.0", ClampMax="1.0"))
+    float RecoverySpeedRatio = 0.50f;
 
     bool bAttackLocked = false;
     int32 QueuedAttack = -1;
