@@ -69,12 +69,6 @@ void AMomAIController::MakeDecision()
         return;
     }
 
-    if (MomCharacter->IsAttackLocked())
-    {
-        StopMovement();
-        return;
-    }
-
     if (MomCharacter->IsStunned())
     {
         StopMovement();
@@ -85,6 +79,12 @@ void AMomAIController::MakeDecision()
     ACharacter* Son = UGameplayStatics::GetPlayerCharacter(this, 0);
     if (!Son)
     {
+        return;
+    }
+
+    if (MomCharacter->IsAttackLocked())
+    {
+        if (CurrentState == EMomAIState::Chase) UpdateAttackMovement(Son);
         return;
     }
 
@@ -189,7 +189,6 @@ void AMomAIController::UpdateChase(ACharacter* Son)
     if (MomCharacter->IsUltimateReady()
         && Distance <= MomCharacter->GetUltimateRange())
     {
-        StopMovement();
         if (MomCharacter->BeginTelegraphedAttack(Son, 2))
         {
             return;
@@ -198,16 +197,16 @@ void AMomAIController::UpdateChase(ACharacter* Son)
 
     if (Distance <= MomCharacter->GetMeleeRange())
     {
-        StopMovement();
-        MomCharacter->BeginTelegraphedAttack(Son, 0);
+        if (MomCharacter->BeginTelegraphedAttack(Son, 0)) return;
+        MoveToActor(Son, MomCharacter->GetMeleeRange() * 0.65f);
         return;
     }
 
     if (Distance <= MomCharacter->GetRangedRange())
     {
-        StopMovement();
         if (MomCharacter->BeginTelegraphedAttack(Son, 1))
         {
+            bStrafeClockwise = !bStrafeClockwise;
             return;
         }
         // 달걀 쿨타임 중이면 멈추지 않고 계속 접근한다.
@@ -219,6 +218,30 @@ void AMomAIController::UpdateChase(ACharacter* Son)
         true,
         true,
         true);
+}
+
+void AMomAIController::UpdateAttackMovement(ACharacter* Son)
+{
+    if (!MomCharacter || !IsValid(Son)) return;
+    SetFocus(Son, EAIFocusPriority::Gameplay);
+    const int32 Attack = MomCharacter->GetActiveAttackIndex();
+    if (Attack == 0) // Melee: pursue through the telegraph.
+    {
+        MoveToActor(Son, MomCharacter->GetMeleeRange() * 0.65f);
+    }
+    else if (Attack == 1) // Egg: lateral repositioning around the player.
+    {
+        const FVector Away = (MomCharacter->GetActorLocation() - Son->GetActorLocation()).GetSafeNormal2D();
+        if (Away.IsNearlyZero()) return;
+        const FVector Side = FVector::CrossProduct(FVector::UpVector, Away);
+        const float Sign = bStrafeClockwise ? 1.0f : -1.0f;
+        const FVector Desired = Son->GetActorLocation() + Away * EggPreferredDistance + Side * (Sign * EggStrafeOffset);
+        MoveToLocation(Desired, 70.0f);
+    }
+    else // Ultimate and recovery: slow pressure, no hard stop.
+    {
+        MoveToActor(Son, MomCharacter->GetMeleeRange() * 0.85f);
+    }
 }
 
 void AMomAIController::UpdateSearch(ACharacter* Son)
